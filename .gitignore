@@ -6,3 +6,6 @@ data/raw/*
 !data/raw/.gitkeep
 data/staging/*
 !data/staging/.gitkeep
+
+# Dagster temporary directories
+.tmp_dagster_home_*
