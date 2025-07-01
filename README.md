@@ -64,17 +64,18 @@ Open http://localhost:3000 with your browser to see the project.
 ## Project Structure
 
 ```
+data/
+├── raw/                  # Raw CSV files from API
+└── staging/              # DuckDB database
+
 nyc311_dagster_project/
 ├── assets/
-│   ├── nyc311.py          # Main data processing assets
-│   └── constants.py       # Configuration constants
-├── data/
-│   ├── raw/              # Raw CSV files from API
-│   └── staging/          # DuckDB database
+│   ├── nyc311.py         # Main data processing assets
+│   └── constants.py      # Configuration constants
 ├── partitions.py         # Daily partitioning configuration
 ├── resources.py          # DuckDB resource configuration
-├── jobs.py              # Job definitions
-└── definitions.py       # Dagster definitions
+├── jobs.py               # Job definitions
+└── definitions.py        # Dagster definitions
 ```
 
 ## Assets
