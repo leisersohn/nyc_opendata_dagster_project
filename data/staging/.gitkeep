@@ -1,0 +1,2 @@
+# This file ensures the data/staging directory is tracked in git
+# The actual database files are ignored via .gitignore 

@@ -1,0 +1,8 @@
+venv/
+.env
+
+# Data directories - exclude contents but preserve folder structure
+data/raw/*
+!data/raw/.gitkeep
+data/staging/*
+!data/staging/.gitkeep
