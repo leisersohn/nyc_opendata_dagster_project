@@ -1,9 +1,0 @@
-dagster
-dagster-webserver
-pandas
-duckdb
-requests
-
-[dev]
-dagster-webserver
-pytest
