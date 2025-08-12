@@ -18,39 +18,54 @@ with source as (
 ),
 
 cleaned as (
-    select
-        -- Clean and validate agency_name
-        case 
-            when agency_name is null or trim(agency_name) = '' then 'Unknown'
-            else trim(agency_name)
-        end as agency_name,
-        
-        -- Clean and validate complaint_type
-        case 
-            when complaint_type is null or trim(complaint_type) = '' then 'Unknown'
-            else trim(complaint_type)
-        end as complaint_type,
-        
-        -- Clean descriptor
-        case 
-            when descriptor is null then 'No description provided'
-            else trim(descriptor)
-        end as descriptor,
-        
-        -- Clean location_type
-        case 
-            when location_type is null or trim(location_type) = '' then 'Unknown'
-            else trim(location_type)
-        end as location_type,
-        
-        -- Use partition_date from source
-        try_cast(partition_date as date) as partition_date,
-        
-        -- Add metadata
-        current_timestamp as _loaded_at,
-        'dbt' as _loaded_by
-        
-    from source
+select
+    unique_key,
+    created_date,
+    closed_date,
+    agency,
+    agency_name,
+    complaint_type,
+    descriptor,
+    location_type,
+    incident_zip,
+    incident_address,
+    street_name,
+    cross_street_1,
+    cross_street_2,
+    intersection_street_1,
+    intersection_street_2,
+    address_type,
+    city,
+    landmark,
+    facility_type,
+    status,
+    due_date,
+    resolution_description,
+    resolution_action_updated_date,
+    community_board,
+    bbl,
+    borough,
+    x_coordinate_state_plane,
+    y_coordinate_state_plane,
+    open_data_channel_type,
+    park_facility_name,
+    park_borough,
+    vehicle_type,
+    taxi_company_borough,
+    taxi_pick_up_location,
+    bridge_highway_name,
+    bridge_highway_direction,
+    road_ramp,
+    bridge_highway_segment,
+    latitude,
+    longitude,
+    location,
+    -- Use partition_date from source
+    try_cast(partition_date as date) as partition_date,
+    -- Add metadata
+    current_timestamp as _loaded_at,
+    'dbt' as _loaded_by
+from source
 )
 
 select * from cleaned 
