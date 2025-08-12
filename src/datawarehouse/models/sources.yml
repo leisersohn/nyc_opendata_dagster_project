@@ -7,4 +7,12 @@ sources:
     schema: main
     tables:
       - name: nyc311_csv
-        description: "Raw NYC 311 data table in DuckDB" 
+        description: "Raw NYC 311 data table in DuckDB"
+        meta:
+          dagster:
+            asset_key: nyc311_raw_data
+      - name: nypd_arrest_json
+        description: "Raw NYPD arrest data table in DuckDB" 
+        meta:
+          dagster:
+            asset_key: nypd_arrest_raw_data

@@ -1,8 +1,8 @@
 import json
 import dagster as dg
 from dagster_dbt import DagsterDbtTranslator, DbtCliResource, dbt_assets
-from nyc311_dagster_project.dbt_project import dbt_project
-from nyc311_dagster_project.partitions import daily_partition
+from nyc_opendata_dagster_project.dbt_project import dbt_project
+from nyc_opendata_dagster_project.partitions import daily_partition
 
 
 # Define selectors for different types of models
@@ -13,14 +13,12 @@ STG_NYC311_SELECTOR = "fqn:staging.stg_nyc311"
 
 class CustomizedDagsterDbtTranslator(DagsterDbtTranslator):
     def get_asset_key(self, dbt_resource_props):
-        resource_type = dbt_resource_props["resource_type"]
-        name = dbt_resource_props["name"]
-        if resource_type == "source":
-            # Map the source to our existing asset
-            if name == "nyc311_csv":
-                return dg.AssetKey("nyc311_raw_data")
-            else:
-                return dg.AssetKey(f"nyc311_{name}")
+
+        # Meta override
+        dagster_meta = (dbt_resource_props.get("meta") or {}).get("dagster",{})
+        ak = dagster_meta.get("asset_key")
+        if ak:
+            return dg.AssetKey(ak)
         else:
             return super().get_asset_key(dbt_resource_props)
     

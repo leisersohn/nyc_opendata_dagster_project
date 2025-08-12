@@ -1,42 +1,46 @@
-# NYC 311 Dagster + DBT Project
+# NYC OpenData Dagster + DBT Project
 
-This is a [Dagster](https://dagster.io/) project integrated with [DBT (Data Build Tool)](https://www.getdbt.com/) for processing NYC 311 service request data. The project fetches daily NYC 311 data from the NYC Open Data API, loads it into a DuckDB database, and uses DBT for data transformation and modeling.
+This is a [Dagster](https://dagster.io/) project integrated with [DBT (Data Build Tool)](https://www.getdbt.com/) for processing various NYC OpenData datasets. The project fetches data from multiple NYC Open Data APIs, loads it into a DuckDB database, and uses DBT for data transformation and modeling.
 
 ## Project Overview
 
 This project consists of two main components:
 
-1. **Dagster Assets** - Handle data ingestion and orchestration
+1. **Dagster Assets** - Handle data ingestion and orchestration for multiple NYC OpenData datasets
 2. **DBT Models** - Handle data transformation and modeling
 
 ### Dagster Assets:
-- **`nyc311_raw_data`** - Downloads daily NYC 311 data from the NYC Open Data API and loads it directly into DuckDB
+- **`nyc311_raw_data`** - Downloads daily NYC 311 service request data from the NYC Open Data API and loads it directly into DuckDB
+- **`nypd_arrest_raw_data`** - Downloads daily NYPD arrest data from the NYC Open Data API and loads it directly into DuckDB
 - **`dbt_analytics`** - Orchestrates DBT models (non-incremental)
 - **`incremental_dbt_models`** - Orchestrates incremental DBT models with partitioning
 
 ### DBT Models:
 - **`stg_nyc311`** - Staging model that transforms and cleans the raw NYC 311 data (incremental)
+- **`stg_nypd_arrest`** - Staging model that transforms and cleans the raw NYPD arrest data (incremental)
 
-The project uses daily partitioning starting from June 1, 2025 (configurable default), but can fetch data from 2010 onward. You can modify the start date in `nyc311_dagster_project/assets/constants.py` to process historical data.
+The project uses daily partitioning starting from June 1, 2025 (configurable default), but can fetch data from 2010 onward. You can modify the start date in `nyc_opendata_dagster_project/assets/constants.py` to process historical data.
 
 ## Data Flow
 
 ```
-NYC Open Data API → DuckDB (raw table) → DBT Transformation → DuckDB (staged table)
+NYC Open Data APIs → DuckDB (raw tables) → DBT Transformation → DuckDB (staged tables)
 ```
 
 **Detailed Flow:**
-1. **Dagster** downloads data from NYC Open Data API
-2. **Dagster** loads raw data into `nyc311_csv` table in DuckDB
-3. **DBT** transforms the raw data using `stg_nyc311` model
-4. **DBT** loads transformed data into `stg_nyc311` table in DuckDB
+1. **Dagster** downloads data from multiple NYC Open Data APIs
+2. **Dagster** loads raw data into respective tables in DuckDB:
+   - `nyc311_csv` table for NYC 311 service requests
+   - `nypd_arrest_json` table for NYPD arrest data
+3. **DBT** transforms the raw data using staging models
+4. **DBT** loads transformed data into staged tables in DuckDB
 
 ## Getting Started
 
 ### Prerequisites
 
 - Python 3.9-3.12
-- Access to NYC Open Data API (public, no authentication required)
+- Access to NYC Open Data APIs (public, no authentication required)
 
 ### Installation
 
@@ -83,9 +87,10 @@ data/
 ├── raw/                  # Raw CSV files from API (legacy)
 └── staging/              # DuckDB database
 
-nyc311_dagster_project/
+nyc_opendata_dagster_project/
 ├── assets/
-│   ├── nyc311.py         # Data ingestion assets
+│   ├── nyc311.py         # NYC 311 data ingestion assets
+│   ├── nypd_arrest.py    # NYPD arrest data ingestion assets
 │   ├── dbt_assets.py     # DBT orchestration assets
 │   └── constants.py      # Configuration constants
 ├── partitions.py         # Daily partitioning configuration
@@ -101,16 +106,23 @@ src/
     ├── models/
     │   ├── sources.yml   # DBT source definitions
     │   └── staging/
-    │       └── stg_nyc311.sql  # Staging model
+    │       ├── stg_nyc311.sql      # NYC 311 staging model
+    │       └── stg_nypd_arrest.sql # NYPD arrest staging model
     └── target/           # DBT compilation artifacts
 ```
 
 ## Assets
 
 ### nyc311_raw_data
-- **Purpose**: Downloads daily NYC 311 data from the NYC Open Data API and loads it directly into DuckDB
+- **Purpose**: Downloads daily NYC 311 service request data from the NYC Open Data API and loads it directly into DuckDB
 - **Partitioning**: Daily partitions starting from 2025-06-01
 - **Output**: Data loaded into `nyc311_csv` table in DuckDB
+- **Group**: `raw_data`
+
+### nypd_arrest_raw_data
+- **Purpose**: Downloads daily NYPD arrest data from the NYC Open Data API and loads it directly into DuckDB
+- **Partitioning**: Daily partitions starting from 2025-06-01
+- **Output**: Data loaded into `nypd_arrest_json` table in DuckDB
 - **Group**: `raw_data`
 
 ### dbt_analytics
@@ -138,32 +150,51 @@ The DBT project is located in `src/datawarehouse/` and is automatically discover
 - **Partitioning**: Uses `partition_date` variable from Dagster
 - **Output**: `stg_nyc311` table in DuckDB
 
+#### stg_nypd_arrest
+- **Purpose**: Staging model that transforms and cleans raw NYPD arrest data
+- **Materialization**: Incremental
+- **Source**: `nypd_arrest_json` table in DuckDB
+- **Partitioning**: Uses `partition_date` variable from Dagster
+- **Output**: `stg_nypd_arrest` table in DuckDB
+
 ### DBT Sources
 The project defines DBT sources in `src/datawarehouse/models/sources.yml`:
-- **`raw.nyc311_csv`** - Points to the raw data table created by Dagster
+- **`raw.nyc311_csv`** - Points to the raw NYC 311 data table created by Dagster
+- **`raw.nypd_arrest_json`** - Points to the raw NYPD arrest data table created by Dagster
 
 ### DBT Dependencies
 Dagster automatically detects dependencies between:
 - **`nyc311_raw_data`** (Dagster asset) → **`stg_nyc311`** (DBT model)
+- **`nypd_arrest_raw_data`** (Dagster asset) → **`stg_nypd_arrest`** (DBT model)
 - This is achieved through the `CustomizedDagsterDbtTranslator` that maps DBT sources to Dagster assets
 
 ## Database Schema
 
-### Raw Data (`nyc311_csv` table)
-Contains all columns from the NYC 311 API response.
+### Raw Data Tables
+- **`nyc311_csv`** - Contains all columns from the NYC 311 API response
+- **`nypd_arrest_json`** - Contains all columns from the NYPD arrest API response
 
-### Staged Data (`stg_nyc311` table)
-Transformed and cleaned data with the following key columns:
-- `agency_name` - NYC agency handling the request
-- `complaint_type` - Type of complaint/service request
-- `descriptor` - Detailed description of the issue
-- `location_type` - Type of location where the issue occurred
-- `partition_date` - Date partition for the data
+### Staged Data Tables
+- **`stg_nyc311`** - Transformed and cleaned NYC 311 data with key columns:
+  - `agency_name` - NYC agency handling the request
+  - `complaint_type` - Type of complaint/service request
+  - `descriptor` - Detailed description of the issue
+  - `location_type` - Type of location where the issue occurred
+  - `partition_date` - Date partition for the data
+
+- **`stg_nypd_arrest`** - Transformed and cleaned NYPD arrest data with key columns:
+  - `arrest_date` - Date of arrest
+  - `offense_description` - Description of the offense
+  - `arrest_borough` - Borough where arrest occurred
+  - `partition_date` - Date partition for the data
 
 ## Jobs
 
 ### nyc311_job
 A partitioned job that processes NYC 311 data for specific dates. You can run this job for individual dates or backfill historical data.
+
+### nypd_arrest_job
+A partitioned job that processes NYPD arrest data for specific dates. You can run this job for individual dates or backfill historical data.
 
 ## Development
 
@@ -180,10 +211,10 @@ You can specify new Python dependencies in `pyproject.toml`.
 
 ### Unit testing
 
-Tests are in the `nyc311_dagster_project_tests` directory and you can run tests using `pytest`:
+Tests are in the `nyc_opendata_dagster_project_tests` directory and you can run tests using `pytest`:
 
 ```bash
-pytest nyc311_dagster_project_tests
+pytest nyc_opendata_dagster_project_tests
 ```
 
 ### DBT Development
@@ -193,6 +224,7 @@ To work with DBT models directly:
 ```bash
 cd src/datawarehouse
 dbt run --select stg_nyc311
+dbt run --select stg_nypd_arrest
 dbt test
 dbt docs generate
 ```
@@ -205,13 +237,24 @@ Once your Dagster Daemon is running, you can start turning on schedules and sens
 
 ## Data Sources
 
-This project uses the NYC 311 Service Requests dataset from NYC Open Data:
+This project uses multiple datasets from NYC Open Data:
+
+### NYC 311 Service Requests
 - **API Endpoint**: https://data.cityofnewyork.us/resource/erm2-nwe9.csv
 - **Data Source**: NYC 311 Service Requests
 - **Update Frequency**: Real-time
 
+### NYPD Arrest Data
+- **API Endpoint**: 
+  - Current year: https://data.cityofnewyork.us/resource/uip8-fykc.json
+  - Historical data: https://data.cityofnewyork.us/resource/8h9b-rp9u.json
+- **Data Source**: NYPD Arrest Data
+- **Update Frequency**: Daily
+- **Coverage**: 2006 to present
+
 ## Key Features
 
+- **Multiple Data Sources**: Processes data from various NYC OpenData APIs
 - **Automatic DBT Discovery**: Dagster automatically discovers and orchestrates DBT models
 - **Partitioning**: Both Dagster assets and DBT models support daily partitioning
 - **Dependency Management**: Automatic dependency detection between Dagster assets and DBT models

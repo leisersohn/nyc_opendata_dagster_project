@@ -1,7 +1,11 @@
 {{
   config(
     materialized='incremental',
-    unique_key=['agency_name', 'complaint_type', 'descriptor', 'location_type', 'partition_date'],
+    partition_by={
+        "field": "partition_date",
+        "data_type": "date",
+        "granularity": "day"
+    },
     on_schema_change='sync_all_columns'
   )
 }}

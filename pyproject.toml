@@ -1,7 +1,7 @@
 [project]
-name = "nyc311_dagster_project"
+name = "nyc_opendata_dagster_project"
 version = "0.1.0"
-description = "My first Dagster project for simple processing of NYC 311 data into DuckDB"
+description = "A Dagster project for processing various NYC OpenData datasets into DuckDB using DBT for transformations"
 readme = "README.md"
 requires-python = ">=3.9,<3.13"
 dependencies = [
@@ -20,8 +20,8 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.dagster]
-module_name = "nyc311_dagster_project.definitions"
-code_location_name = "nyc311_dagster_project"
+module_name = "nyc_opendata_dagster_project.definitions"
+code_location_name = "nyc_opendata_dagster_project"
 
 [tool.setuptools.packages.find]
-exclude=["nyc311_dagster_project_tests"]
+exclude=["nyc_opendata_dagster_project_tests"]

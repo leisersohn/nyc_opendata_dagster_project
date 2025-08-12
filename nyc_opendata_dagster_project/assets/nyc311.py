@@ -1,8 +1,8 @@
 import requests
 import dagster as dg
 from dagster_duckdb import DuckDBResource
-from nyc311_dagster_project.assets import constants
-from nyc311_dagster_project.partitions import daily_partition
+from nyc_opendata_dagster_project.assets import constants
+from nyc_opendata_dagster_project.partitions import daily_partition
 
 
 @dg.asset(

@@ -1,11 +1,16 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="nyc311_dagster_project",
-    packages=find_packages(exclude=["nyc311_dagster_project_tests"]),
+    name="nyc_opendata_dagster_project",
+    packages=find_packages(exclude=["nyc_opendata_dagster_project_tests"]),
     install_requires=[
         "dagster",
-        "dagster-cloud"
+        "dagster-webserver",
+        "dagster-duckdb",
+        "dagster-dbt",
+        "dbt-duckdb",
+        "pandas",
+        "requests"
     ],
-    extras_require={"dev": ["dagster-webserver", "pytest"]},
+    extras_require={"dev": ["dagit", "pytest"]},
 )
