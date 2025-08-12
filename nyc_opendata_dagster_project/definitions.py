@@ -12,7 +12,7 @@ nypd_arrest_assets = dg.load_assets_from_modules([nypd_arrest])
 all_jobs = [nyc311_job, nypd_arrest_job]
 
 defs = dg.Definitions(
-    assets=[*nyc311_assets, *nypd_arrest_assets, dbt_assets.dbt_analytics, dbt_assets.incremental_dbt_models],
+    assets=[*nyc311_assets, *nypd_arrest_assets, dbt_assets.dbt_analytics, dbt_assets.incremental_dbt_models, dbt_assets.dimension_models],
     resources={
         "database": database_resource,
         "dbt": dbt_resource,

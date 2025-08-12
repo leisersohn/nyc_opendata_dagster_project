@@ -2,17 +2,17 @@ version: 2
 
 sources:
   - name: raw
-    description: "Raw NYC 311 data stored in DuckDB"
+    description: "Raw NYC OpenData tables stored in DuckDB"
     database: data
     schema: main
     tables:
       - name: nyc311_csv
-        description: "Raw NYC 311 data table in DuckDB"
+        description: "Raw NYC 311 service request data from NYC OpenData API"
         meta:
           dagster:
             asset_key: nyc311_raw_data
       - name: nypd_arrest_json
-        description: "Raw NYPD arrest data table in DuckDB" 
+        description: "Raw NYPD arrest data from NYC OpenData API" 
         meta:
           dagster:
             asset_key: nypd_arrest_raw_data

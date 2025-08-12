@@ -7,7 +7,8 @@ from nyc_opendata_dagster_project.partitions import daily_partition
 
 # Define selectors for different types of models
 STAGING_SELECTOR = "fqn:staging"
-INCREMENTAL_SELECTOR = "config.materialized:incremental"
+INCREMENTAL_SELECTOR = "fqn:staging.stg_nyc311 fqn:dwh.dwh_nypd_arrest"  # Only specific incremental models that need partitions
+DIMENSION_SELECTOR = "fqn:dwh.dwh_dim_pd fqn:dwh.dwh_dim_ky"  # Only specific dimension tables
 STG_NYC311_SELECTOR = "fqn:staging.stg_nyc311"
 
 
@@ -29,7 +30,7 @@ class CustomizedDagsterDbtTranslator(DagsterDbtTranslator):
 @dbt_assets(
     manifest=dbt_project.manifest_path,
     dagster_dbt_translator=CustomizedDagsterDbtTranslator(),
-    exclude=INCREMENTAL_SELECTOR,
+    exclude=INCREMENTAL_SELECTOR + " " + DIMENSION_SELECTOR,
 )
 def dbt_analytics(context: dg.AssetExecutionContext, dbt: DbtCliResource):
     yield from dbt.cli(["build"], context=context).stream()
@@ -42,7 +43,7 @@ def dbt_analytics(context: dg.AssetExecutionContext, dbt: DbtCliResource):
     partitions_def=daily_partition,
 )
 def incremental_dbt_models(context: dg.AssetExecutionContext, dbt: DbtCliResource):
-    # Pass partition date to DBT
+    # Pass partition date to DBT for incremental models (stg_nyc311 and dwh_nypd_arrest)
     partition_date = context.partition_key
     print(f"Processing partition: {partition_date}")
     dbt_vars = {
@@ -52,4 +53,14 @@ def incremental_dbt_models(context: dg.AssetExecutionContext, dbt: DbtCliResourc
     yield from dbt.cli(
         ["build", "--vars", json.dumps(dbt_vars)], 
         context=context
-    ).stream() 
+    ).stream()
+
+
+@dbt_assets(
+    manifest=dbt_project.manifest_path,
+    dagster_dbt_translator=CustomizedDagsterDbtTranslator(),
+    select=DIMENSION_SELECTOR,
+)
+def dimension_models(context: dg.AssetExecutionContext, dbt: DbtCliResource):
+    # Dimension tables don't need partitions
+    yield from dbt.cli(["build"], context=context).stream() 

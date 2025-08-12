@@ -1,30 +1,39 @@
 # NYC OpenData Dagster + DBT Project
 
-This is a [Dagster](https://dagster.io/) project integrated with [DBT (Data Build Tool)](https://www.getdbt.com/) for processing various NYC OpenData datasets. The project fetches data from multiple NYC Open Data APIs, loads it into a DuckDB database, and uses DBT for data transformation and modeling.
+This is a [Dagster](https://dagster.io/) project integrated with [DBT (Data Build Tool)](https://www.getdbt.com/) for processing various NYC OpenData datasets. The project fetches data from multiple NYC Open Data APIs, loads it into a DuckDB database, and uses DBT for data transformation and modeling with a proper data warehouse architecture.
 
 ## Project Overview
 
 This project consists of two main components:
 
 1. **Dagster Assets** - Handle data ingestion and orchestration for multiple NYC OpenData datasets
-2. **DBT Models** - Handle data transformation and modeling
+2. **DBT Models** - Handle data transformation and modeling with a three-layer data warehouse architecture
 
 ### Dagster Assets:
 - **`nyc311_raw_data`** - Downloads daily NYC 311 service request data from the NYC Open Data API and loads it directly into DuckDB
 - **`nypd_arrest_raw_data`** - Downloads daily NYPD arrest data from the NYC Open Data API and loads it directly into DuckDB
 - **`dbt_analytics`** - Orchestrates DBT models (non-incremental)
 - **`incremental_dbt_models`** - Orchestrates incremental DBT models with partitioning
+- **`dimension_models`** - Orchestrates dimension tables with SCD Type 1 implementation
 
 ### DBT Models:
-- **`stg_nyc311`** - Staging model that transforms and cleans the raw NYC 311 data (incremental)
-- **`stg_nypd_arrest`** - Staging model that transforms and cleans the raw NYPD arrest data (incremental)
+- **Staging Layer**:
+  - **`stg_nyc311`** - Staging model that transforms and cleans the raw NYC 311 data (incremental)
+  - **`stg_nypd_arrest`** - Staging model that transforms and cleans the raw NYPD arrest data
+  - **`stg_dim_pd`** - Staging dimension table for PD codes and descriptions
+  - **`stg_dim_ky`** - Staging dimension table for KY codes and descriptions
+
+- **Data Warehouse Layer**:
+  - **`dwh_dim_pd`** - DWH dimension table for PD data with SCD Type 1 implementation
+  - **`dwh_dim_ky`** - DWH dimension table for KY data with SCD Type 1 implementation
+  - **`dwh_nypd_arrest`** - DWH fact table for NYPD arrest data with full historical records, partitioned by date
 
 The project uses daily partitioning starting from June 1, 2025 (configurable default), but can fetch data from 2010 onward. You can modify the start date in `nyc_opendata_dagster_project/assets/constants.py` to process historical data.
 
 ## Data Flow
 
 ```
-NYC Open Data APIs → DuckDB (raw tables) → DBT Transformation → DuckDB (staged tables)
+NYC Open Data APIs → DuckDB (raw tables) → DBT Staging → DBT DWH (dimensions + facts)
 ```
 
 **Detailed Flow:**
@@ -32,8 +41,35 @@ NYC Open Data APIs → DuckDB (raw tables) → DBT Transformation → DuckDB (st
 2. **Dagster** loads raw data into respective tables in DuckDB:
    - `nyc311_csv` table for NYC 311 service requests
    - `nypd_arrest_json` table for NYPD arrest data
-3. **DBT** transforms the raw data using staging models
-4. **DBT** loads transformed data into staged tables in DuckDB
+3. **DBT Staging** transforms and validates the raw data
+4. **DBT DWH** creates business-ready dimension and fact tables:
+   - **Dimensions**: Current state using SCD Type 1 (overwrites previous data)
+   - **Facts**: Historical data partitioned by date
+
+## Data Warehouse Architecture
+
+### Three-Layer Design
+
+#### 1. **Staging Layer** (Fresh Data Each Run)
+- **Purpose**: Data transformation, validation, and cleaning
+- **Materialization**: Table with conditional truncate
+- **Data Lifecycle**: Fresh data every run, no historical accumulation
+- **Tables**: `stg_nypd_arrest`, `stg_dim_pd`, `stg_dim_ky`
+- **Exceptions**: `stg_nyc311` which contains historical (partitioned) data (to be re-modelled)
+
+#### 2. **Dimension Layer** (SCD Type 1)
+- **Purpose**: Master data with current state
+- **Materialization**: Table (full refresh each run)
+- **SCD Type 1**: Always reflects current state, overwrites previous data
+- **Handles**: Inserts, updates, and deletions from operational systems
+- **Tables**: `dwh_dim_pd`, `dwh_dim_ky`
+
+#### 3. **Fact Layer** (Historical Data)
+- **Purpose**: Transactional data with full history
+- **Materialization**: Incremental with partitioning
+- **Partitioning**: By `partition_date` for efficient historical data management
+- **Data Lifecycle**: Accumulates historical data across partitions
+- **Tables**: `dwh_nypd_arrest`
 
 ## Getting Started
 
@@ -105,9 +141,16 @@ src/
     ├── profiles.yml      # DBT database connection
     ├── models/
     │   ├── sources.yml   # DBT source definitions
-    │   └── staging/
-    │       ├── stg_nyc311.sql      # NYC 311 staging model
-    │       └── stg_nypd_arrest.sql # NYPD arrest staging model
+    │   ├── schema.yml    # DBT model documentation and tests
+    │   ├── staging/      # Staging layer models
+    │   │   ├── stg_nyc311.sql      # NYC 311 staging model
+    │   │   ├── stg_nypd_arrest.sql # NYPD arrest staging model
+    │   │   ├── stg_dim_pd.sql      # PD dimension staging
+    │   │   └── stg_dim_ky.sql      # KY dimension staging
+    │   └── dwh/          # Data warehouse layer models
+    │       ├── dwh_dim_pd.sql      # PD dimension table
+    │       ├── dwh_dim_ky.sql      # KY dimension table
+    │       └── dwh_nypd_arrest.sql # NYPD arrest fact table
     └── target/           # DBT compilation artifacts
 ```
 
@@ -117,13 +160,11 @@ src/
 - **Purpose**: Downloads daily NYC 311 service request data from the NYC Open Data API and loads it directly into DuckDB
 - **Partitioning**: Daily partitions starting from 2025-06-01
 - **Output**: Data loaded into `nyc311_csv` table in DuckDB
-- **Group**: `raw_data`
 
 ### nypd_arrest_raw_data
 - **Purpose**: Downloads daily NYPD arrest data from the NYC Open Data API and loads it directly into DuckDB
 - **Partitioning**: Daily partitions starting from 2025-06-01
 - **Output**: Data loaded into `nypd_arrest_json` table in DuckDB
-- **Group**: `raw_data`
 
 ### dbt_analytics
 - **Purpose**: Orchestrates non-incremental DBT models
@@ -134,7 +175,14 @@ src/
 - **Purpose**: Orchestrates incremental DBT models with partitioning
 - **Dependencies**: Automatically detected from DBT manifest
 - **Partitioning**: Daily partitions (inherited from Dagster)
-- **DBT Variables**: Passes `partition_date`, `min_date`, `max_date` to DBT
+- **DBT Variables**: Passes `partition_date` to DBT
+- **Models**: `stg_nyc311`, `dwh_nypd_arrest`
+
+### dimension_models
+- **Purpose**: Orchestrates dimension tables with SCD Type 1 implementation
+- **Dependencies**: Automatically detected from DBT manifest
+- **Partitioning**: None (dimensions maintain current state)
+- **Models**: `dwh_dim_pd`, `dwh_dim_ky`
 
 ## DBT Integration
 
@@ -143,19 +191,59 @@ The DBT project is located in `src/datawarehouse/` and is automatically discover
 
 ### DBT Models
 
-#### stg_nyc311
+#### Staging Layer
+
+##### stg_nyc311
 - **Purpose**: Staging model that transforms and cleans raw NYC 311 data
 - **Materialization**: Incremental
 - **Source**: `nyc311_csv` table in DuckDB
 - **Partitioning**: Uses `partition_date` variable from Dagster
 - **Output**: `stg_nyc311` table in DuckDB
 
-#### stg_nypd_arrest
+##### stg_nypd_arrest
 - **Purpose**: Staging model that transforms and cleans raw NYPD arrest data
-- **Materialization**: Incremental
+- **Materialization**: Table with conditional truncate
 - **Source**: `nypd_arrest_json` table in DuckDB
-- **Partitioning**: Uses `partition_date` variable from Dagster
 - **Output**: `stg_nypd_arrest` table in DuckDB
+
+##### stg_dim_pd
+- **Purpose**: Staging dimension table for PD codes and descriptions
+- **Materialization**: Table with conditional truncate
+- **Source**: `nypd_arrest_json` table in DuckDB
+- **Output**: `stg_dim_pd` table in DuckDB
+
+##### stg_dim_ky
+- **Purpose**: Staging dimension table for KY codes and descriptions
+- **Materialization**: Table with conditional truncate
+- **Source**: `nypd_arrest_json` table in DuckDB
+- **Output**: `stg_dim_ky` table in DuckDB
+
+#### Data Warehouse Layer
+
+##### dwh_dim_pd
+- **Purpose**: DWH dimension table for PD data with SCD Type 1 implementation
+- **Materialization**: Table (full refresh each run)
+- **Source**: `stg_dim_pd` table
+- **SCD Type 1**: Always reflects current state, handles inserts/updates/deletions
+- **Natural Key**: `pd_id`
+- **Output**: `dwh_dim_pd` table in DuckDB
+
+##### dwh_dim_ky
+- **Purpose**: DWH dimension table for KY data with SCD Type 1 implementation
+- **Materialization**: Table (full refresh each run)
+- **Source**: `stg_dim_ky` table
+- **SCD Type 1**: Always reflects current state, handles inserts/updates/deletions
+- **Natural Key**: `ky_id`
+- **Output**: `dwh_dim_ky` table in DuckDB
+
+##### dwh_nypd_arrest
+- **Purpose**: DWH fact table for NYPD arrest data with full historical records
+- **Materialization**: Incremental with partitioning
+- **Source**: `stg_nypd_arrest` table + dimension tables
+- **Partitioning**: By `partition_date` for historical data management
+- **Pre-hook**: Truncates current partition before loading new data
+- **Foreign Keys**: References `dwh_dim_pd.pd_id` and `dwh_dim_ky.ky_id`
+- **Output**: `dwh_nypd_arrest` table in DuckDB
 
 ### DBT Sources
 The project defines DBT sources in `src/datawarehouse/models/sources.yml`:
@@ -166,7 +254,9 @@ The project defines DBT sources in `src/datawarehouse/models/sources.yml`:
 Dagster automatically detects dependencies between:
 - **`nyc311_raw_data`** (Dagster asset) → **`stg_nyc311`** (DBT model)
 - **`nypd_arrest_raw_data`** (Dagster asset) → **`stg_nypd_arrest`** (DBT model)
-- This is achieved through the `CustomizedDagsterDbtTranslator` that maps DBT sources to Dagster assets
+- **`stg_nypd_arrest`** → **`dwh_nypd_arrest`** (fact table)
+- **`stg_dim_pd`** → **`dwh_dim_pd`** (dimension table)
+- **`stg_dim_ky`** → **`dwh_dim_ky`** (dimension table)
 
 ## Database Schema
 
@@ -174,19 +264,11 @@ Dagster automatically detects dependencies between:
 - **`nyc311_csv`** - Contains all columns from the NYC 311 API response
 - **`nypd_arrest_json`** - Contains all columns from the NYPD arrest API response
 
-### Staged Data Tables
-- **`stg_nyc311`** - Transformed and cleaned NYC 311 data with key columns:
-  - `agency_name` - NYC agency handling the request
-  - `complaint_type` - Type of complaint/service request
-  - `descriptor` - Detailed description of the issue
-  - `location_type` - Type of location where the issue occurred
-  - `partition_date` - Date partition for the data
-
-- **`stg_nypd_arrest`** - Transformed and cleaned NYPD arrest data with key columns:
-  - `arrest_date` - Date of arrest
-  - `offense_description` - Description of the offense
-  - `arrest_borough` - Borough where arrest occurred
-  - `partition_date` - Date partition for the data
+### Staging Tables
+- **`stg_nyc311`** - Transformed and cleaned NYC 311 data
+- **`stg_nypd_arrest`** - Transformed and cleaned NYPD arrest data
+- **`stg_dim_pd`** - PD codes and descriptions from NYPD arrest data
+- **`stg_dim_ky`** - KY codes and descriptions from NYPD arrest data
 
 ## Jobs
 
@@ -207,7 +289,8 @@ You can specify new Python dependencies in `pyproject.toml`.
 1. Create new SQL files in `src/datawarehouse/models/`
 2. Dagster will automatically detect and orchestrate them
 3. For incremental models, they will be included in the `incremental_dbt_models` asset
-4. For non-incremental models, they will be included in the `dbt_analytics` asset
+4. For dimension tables, they will be included in the `dimension_models` asset
+5. For other models, they will be included in the `dbt_analytics` asset
 
 ### Unit testing
 
@@ -225,6 +308,9 @@ To work with DBT models directly:
 cd src/datawarehouse
 dbt run --select stg_nyc311
 dbt run --select stg_nypd_arrest
+dbt run --select dwh_dim_pd
+dbt run --select dwh_dim_ky
+dbt run --select dwh_nypd_arrest
 dbt test
 dbt docs generate
 ```
@@ -251,15 +337,6 @@ This project uses multiple datasets from NYC Open Data:
 - **Data Source**: NYPD Arrest Data
 - **Update Frequency**: Daily
 - **Coverage**: 2006 to present
-
-## Key Features
-
-- **Multiple Data Sources**: Processes data from various NYC OpenData APIs
-- **Automatic DBT Discovery**: Dagster automatically discovers and orchestrates DBT models
-- **Partitioning**: Both Dagster assets and DBT models support daily partitioning
-- **Dependency Management**: Automatic dependency detection between Dagster assets and DBT models
-- **Incremental Processing**: DBT models support incremental materialization for efficient processing
-- **Unified Orchestration**: Single Dagster UI for monitoring both data ingestion and transformation
 
 ## Deploy on Dagster+
 
