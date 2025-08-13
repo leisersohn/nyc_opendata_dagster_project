@@ -106,9 +106,71 @@ DUCKDB_DATABASE=data/staging/data.duckdb
 DAGSTER_ENVIRONMENT=dev
 ```
 
+## Execution Options
+
+### Option 1: Local Execution
+
+The simplest way to run the project locally:
+
+```bash
+# Rename .env.example to .env (if it exists)
+cp .env.example .env  # or manually create .env file
+
+# Install the project
+pip install -e .
+
+# Start Dagster UI
+dagster dev -h 0.0.0.0 -p 3000
+```
+
+### Option 2: Virtual Environment
+
+For better dependency isolation:
+
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install the project
+pip install -e .
+
+# Start Dagster UI
+dagster dev -h 0.0.0.0 -p 3000
+```
+
+### Option 3: Docker
+
+For containerized execution:
+
+```bash
+# Navigate to deploy directory
+cd deploy
+
+# Rename .env.example to .env (if it exists)
+cp .env.example .env  # or manually create .env file
+
+# Install Docker (if not already installed)
+# On Ubuntu/Debian:
+sudo apt-get update && sudo apt-get install docker.io docker-compose
+
+# On Amazon Linux/RHEL/CentOS:
+sudo yum install -y docker docker-compose
+
+# On macOS: Download Docker Desktop from https://www.docker.com/products/docker-desktop
+
+# Build and start services
+docker compose build
+docker compose up -d
+```
+
+**Note**: After starting with any option, open http://localhost:3000 in your browser to access the Dagster UI.
+
 ### Running the Project
 
-Start the Dagster UI web server:
+Start the Dagster UI web server using one of the execution options above:
 
 ```bash
 dagster dev
