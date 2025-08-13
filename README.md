@@ -92,17 +92,14 @@ Set the DuckDB database path as an environment variable. You can either:
 
 **Option 1: Set environment variable directly**
 ```bash
-# Windows PowerShell
-$env:DUCKDB_DATABASE="data/staging/data.duckdb"
-
 # Linux/Mac
-export DUCKDB_DATABASE="data/staging/data.duckdb"
+export DUCKDB_DATABASE="$(pwd)/nyc_opendata_dagster_project/data/staging/data.duckdb"
 ```
 
 **Option 2: Use a .env file**
 Create a `.env` file in the project root and add:
 ```
-DUCKDB_DATABASE=data/staging/data.duckdb
+DUCKDB_DATABASE=${PWD}/data/staging/data.duckdb
 DAGSTER_ENVIRONMENT=dev
 ```
 
@@ -240,7 +237,7 @@ This project includes a complete Docker setup for production deployment. The Doc
 #### Environment Variables
 
 The Docker setup uses environment variables from `deploy/.env`:
-- `DUCKDB_DATABASE`: Path to DuckDB database file
+- `DUCKDB_DATABASE`: Path to DuckDB database file (e.g., `${PWD}/data/staging/data.duckdb`)
 - `DAGSTER_ENVIRONMENT`: Environment setting
 - `DBT_PROJECT_DIR`: DBT project directory path
 - `DBT_PROFILES_DIR`: DBT profiles directory path
