@@ -24,4 +24,6 @@ module_name = "nyc_opendata_dagster_project.definitions"
 code_location_name = "nyc_opendata_dagster_project"
 
 [tool.setuptools.packages.find]
+where = ["."]
+include = ["nyc_opendata_dagster_project*"]
 exclude=["nyc_opendata_dagster_project_tests"]

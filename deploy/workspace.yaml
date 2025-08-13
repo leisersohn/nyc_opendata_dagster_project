@@ -1,0 +1,2 @@
+load_from:
+  - python_module: nyc_opendata_dagster_project.definitions

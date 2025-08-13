@@ -116,12 +116,88 @@ dagster dev
 
 Open http://localhost:3000 with your browser to see the project.
 
+## Docker Deployment
+
+This project includes a complete Docker setup for production deployment. The Docker configuration provides:
+
+- **Webserver service**: Dagster UI accessible on port 3000
+- **Daemon service**: Background job execution and scheduling
+- **Persistent storage**: Data and Dagster state preserved across container restarts
+- **Environment isolation**: Consistent runtime environment
+
+### Prerequisites for Docker
+
+- Docker and Docker Compose installed
+- At least 4GB of available memory
+- Port 3000 available on your host machine
+
+### Quick Start with Docker
+
+1. **Navigate to the deploy directory:**
+   ```bash
+   cd deploy
+   ```
+
+2. **Build and start the services:**
+   ```bash
+   docker-compose up --build -d
+   ```
+
+3. **Access the Dagster UI:**
+   Open http://localhost:3000 in your browser
+
+4. **View logs:**
+   ```bash
+   # All services
+   docker-compose logs -f
+   
+   # Specific service
+   docker-compose logs -f webserver
+   docker-compose logs -f daemon
+   ```
+
+5. **Stop the services:**
+   ```bash
+   docker-compose down
+   ```
+
+### Docker Configuration Details
+
+#### Services
+
+- **`webserver`**: Runs the Dagster UI on port 3000
+- **`daemon`**: Runs the Dagster daemon for background job execution
+
+#### Volumes
+
+- **`./dagster_home:/opt/dagster`**: Persists Dagster's local state
+- **`./workspace.yaml:/opt/dagster/workspace.yaml:ro`**: Workspace configuration
+- **`../data:/app/data`**: Project data directory (DuckDB files)
+- **`../nyc_opendata_dagster_project:/app/nyc_opendata_dagster_project`**: Project source code
+
+#### Environment Variables
+
+The Docker setup uses environment variables from `deploy/.env`:
+- `DUCKDB_DATABASE`: Path to DuckDB database file
+- `DAGSTER_ENVIRONMENT`: Environment setting
+- `DBT_PROJECT_DIR`: DBT project directory path
+- `DBT_PROFILES_DIR`: DBT profiles directory path
+
+
 ## Project Structure
 
 ```
 data/
 ├── raw/                  # Raw CSV files from API (legacy)
 └── staging/              # DuckDB database
+
+deploy/                   # Docker deployment configuration
+├── Dockerfile            # Container image definition
+├── docker-compose.yml    # Multi-service orchestration
+├── workspace.yaml        # Dagster workspace configuration
+├── .env                  # Environment variables for Docker
+├── dagster_home/         # Persistent Dagster state (excluded from git)
+└── secrets/              # Secret management (excluded from git)
 
 nyc_opendata_dagster_project/
 ├── assets/

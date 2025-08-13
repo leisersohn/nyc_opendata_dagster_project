@@ -3,6 +3,6 @@ datawarehouse:
   outputs:
     dev:
       type: duckdb
-      path: "../../{{ env_var('DUCKDB_DATABASE', 'data/staging/data.duckdb') }}"
+      path: "{{ env_var('DUCKDB_DATABASE', 'data/staging/data.duckdb') }}"
       schema: main
       threads: 4 

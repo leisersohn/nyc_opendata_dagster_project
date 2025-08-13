@@ -1,0 +1,48 @@
+services:
+  webserver:
+    environment:
+      PYTHONPATH: /app
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: nyc-opendata-dagster:latest
+    command: >
+      bash -euo pipefail -lc '
+        cd /app/src/datawarehouse &&
+        dbt deps &&
+        dbt compile --vars "{\"partition_date\": \"${PARTITION_DATE:-1970-01-01}\"}" &&
+        exec dagster-webserver -h 0.0.0.0 -p 3000 -w /opt/dagster/workspace.yaml
+      '
+    ports:
+      - "3000:3000"
+    env_file: [./.env]
+    volumes:
+      # Persist Dagster's local state (no explicit DB config needed)
+      - ./dagster_home:/opt/dagster
+      # Workspace config
+      - ./workspace.yaml:/opt/dagster/workspace.yaml:ro
+      # Persist your project's data so the DuckDB file survives rebuilds
+      - ../data:/app/src/datawarehouse/data
+      # If you use host ~/.dbt for profiles, uncomment the next line AND set DBT_PROFILES_DIR=/root/.dbt
+      # - /home/ec2-user/.dbt:/root/.dbt:ro
+    restart: unless-stopped
+
+  daemon:
+    environment:
+      PYTHONPATH: /app
+    image: nyc-opendata-dagster:latest
+    depends_on: [webserver]
+    command: >
+      bash -euo pipefail -lc '
+        cd /app/src/datawarehouse &&
+        dbt deps &&
+        dbt compile --vars "{\"partition_date\": \"${PARTITION_DATE:-1970-01-01}\"}" &&
+        exec dagster-daemon run -w /opt/dagster/workspace.yaml
+      '
+    env_file: [./.env]
+    volumes:
+      - ./dagster_home:/opt/dagster
+      - ./workspace.yaml:/opt/dagster/workspace.yaml:ro
+      - ../data:/app/src/datawarehouse/data
+      # - /home/ec2-user/.dbt:/root/.dbt:ro  # match if used above
+    restart: unless-stopped

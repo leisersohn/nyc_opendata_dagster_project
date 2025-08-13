@@ -58,3 +58,9 @@ Thumbs.db
 
 # Dagster temporary directories
 .tmp_dagster_home_*
+
+# Docker-related files
+.dockerignore
+docker-compose.override.yml
+deploy/dagster_home/
+deploy/secrets/
