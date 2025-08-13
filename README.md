@@ -93,7 +93,7 @@ Set the DuckDB database path as an environment variable. You can either:
 **Option 1: Set environment variable directly**
 ```bash
 # Linux/Mac
-export DUCKDB_DATABASE="$(pwd)/nyc_opendata_dagster_project/data/staging/data.duckdb"
+export DUCKDB_DATABASE="$(pwd)/data/staging/data.duckdb"
 ```
 
 **Option 2: Use a .env file**
