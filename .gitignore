@@ -39,6 +39,8 @@ MANIFEST
 *.log
 logs/
 target/
+dbt_packages/
+package-lock.yml
 
 # IDE and editor files
 .vscode/

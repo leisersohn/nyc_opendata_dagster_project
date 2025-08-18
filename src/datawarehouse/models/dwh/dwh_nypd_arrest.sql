@@ -7,7 +7,13 @@
         "granularity": "day"
     },
     on_schema_change='sync_all_columns',
-    pre_hook="delete from {{ this }} where partition_date = '{{ var('partition_date') }}'"
+    pre_hook="""
+        {% if execute %}
+            {% if adapter.get_relation(this.database, this.schema, this.name) %}
+                delete from {{ this }} where partition_date = '{{ var('partition_date') }}'
+            {% endif %}
+        {% endif %}
+    """
   )
 }}
 

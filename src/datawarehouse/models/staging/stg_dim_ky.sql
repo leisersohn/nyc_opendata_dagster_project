@@ -16,7 +16,7 @@ with source as (
 cleaned as (
     select
         ky_cd as ky_id,
-        ofns_desc as ofns_desc,
+        ofns_desc as ky_desc,
         current_timestamp as _loaded_at,
         'dbt' as _loaded_by
     from source

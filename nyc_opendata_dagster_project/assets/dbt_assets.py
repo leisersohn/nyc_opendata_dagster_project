@@ -10,6 +10,7 @@ STAGING_SELECTOR = "fqn:staging"
 INCREMENTAL_SELECTOR = "fqn:staging.stg_nyc311 fqn:dwh.dwh_nypd_arrest"  # Only specific incremental models that need partitions
 DIMENSION_SELECTOR = "fqn:dwh.dwh_dim_pd fqn:dwh.dwh_dim_ky"  # Only specific dimension tables
 STG_NYC311_SELECTOR = "fqn:staging.stg_nyc311"
+SNAPSHOT_SELECTOR = "resource_type:snapshot"
 
 
 class CustomizedDagsterDbtTranslator(DagsterDbtTranslator):
@@ -24,13 +25,14 @@ class CustomizedDagsterDbtTranslator(DagsterDbtTranslator):
             return super().get_asset_key(dbt_resource_props)
     
     def get_group_name(self, dbt_resource_props):
+        if dbt_resource_props.get("resource_type") == "snapshot":
+            return "snapshots"
         return dbt_resource_props["fqn"][1]
-
 
 @dbt_assets(
     manifest=dbt_project.manifest_path,
     dagster_dbt_translator=CustomizedDagsterDbtTranslator(),
-    exclude=INCREMENTAL_SELECTOR + " " + DIMENSION_SELECTOR,
+    exclude=INCREMENTAL_SELECTOR + " " + DIMENSION_SELECTOR + " " + SNAPSHOT_SELECTOR,
 )
 def dbt_analytics(context: dg.AssetExecutionContext, dbt: DbtCliResource):
     yield from dbt.cli(["build"], context=context).stream()
@@ -55,11 +57,18 @@ def incremental_dbt_models(context: dg.AssetExecutionContext, dbt: DbtCliResourc
         context=context
     ).stream()
 
+@dbt_assets(
+    manifest=dbt_project.manifest_path,
+    dagster_dbt_translator=CustomizedDagsterDbtTranslator(),
+    select=SNAPSHOT_SELECTOR,
+)
+def snapshot_assets(context: dg.AssetExecutionContext, dbt: DbtCliResource):
+    yield from dbt.cli(["snapshot"], context=context).stream()
 
 @dbt_assets(
     manifest=dbt_project.manifest_path,
     dagster_dbt_translator=CustomizedDagsterDbtTranslator(),
-    select=DIMENSION_SELECTOR,
+    select=SNAPSHOT_SELECTOR + " " + DIMENSION_SELECTOR,
 )
 def dimension_models(context: dg.AssetExecutionContext, dbt: DbtCliResource):
     # Dimension tables don't need partitions

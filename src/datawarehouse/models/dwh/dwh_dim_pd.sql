@@ -1,37 +1,18 @@
-{{
-  config(
-    materialized='incremental',
-    on_schema_change='sync_all_columns',
-    unique_key='pd_id'
-  )
-}}
+{{ config(materialized='table') }}
 
-with staging as (
-    select * from {{ ref('stg_dim_pd') }}
-),
-
-existing_dim as (
-    select * from {{ this }}
-),
-
--- SCD Type 1
-final as (
-    -- Get records last status from staging
-    select
-        *
-    from
-        staging
-
-    UNION ALL
-
-    -- Keep deleted records from DWH
-    select
-        e.*
-    from
-        existing_dim e
-        left join staging s on (e.pd_id = s.pd_id)
-    where
-        s.pd_id is null        
+with snap as (
+  select
+    *,
+    case when dbt_valid_to is null then 1 else 0 end as is_current,
+    {{ dbt_utils.generate_surrogate_key(['pd_id','dbt_valid_from']) }} as pd_sk
+  from {{ ref('dim_pd_snapshot') }}
 )
 
-select * from final 
+select
+  pd_sk,
+  pd_id,
+  pd_desc,
+  dbt_valid_from as valid_from,
+  dbt_valid_to   as valid_to,
+  is_current
+from snap

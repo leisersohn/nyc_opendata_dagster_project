@@ -44,7 +44,7 @@ models:
         tests:
           - not_null
           - unique
-      - name: ofns_desc
+      - name: ky_desc
         description: "Offense description"
         tests:
           - not_null
@@ -53,6 +53,11 @@ models:
   - name: dwh_dim_pd
     description: "DWH dimension table for PD data with SCD Type 1 implementation"
     columns:
+      - name: pd_sk
+        description: Surrogate key
+        tests:
+          - not_null
+          - unique
       - name: pd_id
         description: "PD code (natural business key)"
         tests:
@@ -66,15 +71,34 @@ models:
   - name: dwh_dim_ky
     description: "DWH dimension table for KY data with SCD Type 1 implementation"
     columns:
+      - name: ky_sk
+        description: Surrogate key
+        tests:
+          - not_null
+          - unique
       - name: ky_id
         description: "KY code (natural business key)"
         tests:
           - not_null
           - unique
-      - name: ofns_desc
+      - name: ky_desc
         description: "Current offense description (SCD Type 1)"
         tests:
           - not_null
+  
+  - name: dwh_dim_pd_current
+    columns:
+      - name: pd_id
+        tests:
+          - unique:
+              where: "is_current = 1"
+
+  - name: dwh_dim_ky_current
+    columns:
+      - name: ky_id
+        tests:
+          - unique:
+              where: "is_current = 1"
 
   - name: dwh_nypd_arrest
     description: "DWH fact table for NYPD arrest data with full historical records, partitioned by date"
