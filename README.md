@@ -14,7 +14,7 @@ This project consists of two main components:
 - **`nypd_arrest_raw_data`** - Downloads daily NYPD arrest data from the NYC Open Data API and loads it directly into DuckDB
 - **`dbt_analytics`** - Orchestrates DBT models (non-incremental)
 - **`incremental_dbt_models`** - Orchestrates incremental DBT models with partitioning
-- **`dimension_models`** - Orchestrates dimension tables with SCD Type 1 implementation
+- **`dimension_models`** - Orchestrates dimension tables with SCD Type 2 implementation
 
 ### DBT Models:
 - **Staging Layer**:
@@ -24,8 +24,8 @@ This project consists of two main components:
   - **`stg_dim_ky`** - Staging dimension table for KY codes and descriptions
 
 - **Data Warehouse Layer**:
-  - **`dwh_dim_pd`** - DWH dimension table for PD data with SCD Type 1 implementation
-  - **`dwh_dim_ky`** - DWH dimension table for KY data with SCD Type 1 implementation
+  - **`dwh_dim_pd`** - DWH dimension table for PD data with SCD Type 2 implementation
+- **`dwh_dim_ky`** - DWH dimension table for KY data with SCD Type 2 implementation
   - **`dwh_nypd_arrest`** - DWH fact table for NYPD arrest data with full historical records, partitioned by date
 
 The project uses daily partitioning starting from June 1, 2025 (configurable default), but can fetch data from 2010 onward. You can modify the start date in `nyc_opendata_dagster_project/assets/constants.py` to process historical data.
@@ -43,7 +43,7 @@ NYC Open Data APIs → DuckDB (raw tables) → DBT Staging → DBT DWH (dimensio
    - `nypd_arrest_json` table for NYPD arrest data
 3. **DBT Staging** transforms and validates the raw data
 4. **DBT DWH** creates business-ready dimension and fact tables:
-   - **Dimensions**: Current state using SCD Type 1 (overwrites previous data)
+   - **Dimensions**: Historical versions using SCD Type 2 (maintains full history)
    - **Facts**: Historical data partitioned by date
 
 ## Data Warehouse Architecture
@@ -57,11 +57,11 @@ NYC Open Data APIs → DuckDB (raw tables) → DBT Staging → DBT DWH (dimensio
 - **Tables**: `stg_nypd_arrest`, `stg_dim_pd`, `stg_dim_ky`
 - **Exceptions**: `stg_nyc311` which contains historical (partitioned) data (to be re-modelled)
 
-#### 2. **Dimension Layer** (SCD Type 1)
-- **Purpose**: Master data with current state
+#### 2. **Dimension Layer** (SCD Type 2)
+- **Purpose**: Master data with full historical versions
 - **Materialization**: Table (full refresh each run)
-- **SCD Type 1**: Always reflects current state, overwrites previous data
-- **Handles**: Inserts, updates, and deletions from operational systems
+- **SCD Type 2**: Maintains historical versions with effective dates, creates new records for changes
+- **Handles**: Inserts, updates, and deletions from operational systems while preserving history
 - **Tables**: `dwh_dim_pd`, `dwh_dim_ky`
 
 #### 3. **Fact Layer** (Historical Data)
@@ -314,9 +314,9 @@ src/
 - **Models**: `stg_nyc311`, `dwh_nypd_arrest`
 
 ### dimension_models
-- **Purpose**: Orchestrates dimension tables with SCD Type 1 implementation
+- **Purpose**: Orchestrates dimension tables with SCD Type 2 implementation
 - **Dependencies**: Automatically detected from DBT manifest
-- **Partitioning**: None (dimensions maintain current state)
+- **Partitioning**: None (dimensions maintain historical versions)
 - **Models**: `dwh_dim_pd`, `dwh_dim_ky`
 
 ## DBT Integration
@@ -356,18 +356,18 @@ The DBT project is located in `src/datawarehouse/` and is automatically discover
 #### Data Warehouse Layer
 
 ##### dwh_dim_pd
-- **Purpose**: DWH dimension table for PD data with SCD Type 1 implementation
+- **Purpose**: DWH dimension table for PD data with SCD Type 2 implementation
 - **Materialization**: Table (full refresh each run)
 - **Source**: `stg_dim_pd` table
-- **SCD Type 1**: Always reflects current state, handles inserts/updates/deletions
+- **SCD Type 2**: Maintains historical versions with effective dates, creates new records for changes
 - **Natural Key**: `pd_id`
 - **Output**: `dwh_dim_pd` table in DuckDB
 
 ##### dwh_dim_ky
-- **Purpose**: DWH dimension table for KY data with SCD Type 1 implementation
+- **Purpose**: DWH dimension table for KY data with SCD Type 2 implementation
 - **Materialization**: Table (full refresh each run)
 - **Source**: `stg_dim_ky` table
-- **SCD Type 1**: Always reflects current state, handles inserts/updates/deletions
+- **SCD Type 2**: Maintains historical versions with effective dates, creates new records for changes
 - **Natural Key**: `ky_id`
 - **Output**: `dwh_dim_ky` table in DuckDB
 
