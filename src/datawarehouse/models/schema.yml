@@ -112,23 +112,29 @@ models:
         description: "Date when the arrest occurred"
         tests:
           - not_null
+      - name: pd_sk
+        description: "Surrogate key for PD dimension (foreign key to dwh_dim_pd.pd_sk)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dwh_dim_pd_current')
+              field: pd_sk
+      - name: ky_sk
+        description: "Surrogate key for KY dimension (foreign key to dwh_dim_ky_current.ky_sk)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dwh_dim_ky_current')
+              field: ky_sk
       - name: partition_date
         description: "Partition date for historical data management"
         tests:
           - not_null
       - name: pd_id
-        description: "PD code (foreign key to dwh_dim_pd)"
+        description: "PD code (business key for reference)"
         tests:
           - not_null
-          # Relationship test commented out until build order is resolved
-          # - relationships:
-          #     to: ref('dwh_dim_pd')
-          #     field: pd_id
       - name: ky_id
-        description: "KY code (foreign key to dwh_dim_ky)"
+        description: "KY code (business key for reference)"
         tests:
           - not_null
-          # Relationship test commented out until build order is resolved
-          # - relationships:
-          #     to: ref('dwh_dim_ky')
-          #     field: ky_id

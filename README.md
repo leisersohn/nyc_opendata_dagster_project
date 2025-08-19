@@ -103,6 +103,57 @@ DUCKDB_DATABASE=${PWD}/data/staging/data.duckdb
 DAGSTER_ENVIRONMENT=dev
 ```
 
+## Initial Setup (One-time)
+
+After installation, you need to initialize all assets and tables. This is a one-time setup process:
+
+### 1. Initialize Dagster Assets
+
+First, create the raw data tables by running Dagster assets for an initial partition:
+
+```bash
+# From the project root directory
+dagster asset materialize -f nyc_opendata_dagster_project/definitions.py --select "nyc311_raw_data,nypd_arrest_raw_data" --partition 2025-06-01
+```
+
+This will:
+- Download NYC 311 data for 2025-06-01 and create the `nyc311_csv` table
+- Download NYPD arrest data for 2025-06-01 and create the `nypd_arrest_json` table
+
+### 2. Initialize DBT Assets
+
+Next, create all the DBT models and tables with full-refresh:
+
+```bash
+# Navigate to the DBT project directory
+cd src/datawarehouse
+
+# Run all DBT models with full-refresh for the initial partition
+dbt run --full-refresh --vars '{"partition_date": "2025-06-01"}'
+```
+
+This will:
+- Create all staging tables 
+- Create all dimension tables
+- Create the fact table
+
+### 3. Verify Setup
+
+After initialization, you can verify everything is working:
+
+```bash
+# Test DBT models
+dbt test
+
+# Generate DBT documentation
+dbt docs generate
+
+# Start Dagster UI to see all assets
+dagster dev
+```
+
+**Note**: This initialization process only needs to be run once. After the initial setup, you can use normal incremental processing for new partitions.
+
 ## Execution Options
 
 ### Option 1: Local Execution

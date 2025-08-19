@@ -12,7 +12,6 @@ DIMENSION_SELECTOR = "fqn:dwh.dwh_dim_pd fqn:dwh.dwh_dim_ky"  # Only specific di
 STG_NYC311_SELECTOR = "fqn:staging.stg_nyc311"
 SNAPSHOT_SELECTOR = "resource_type:snapshot"
 
-
 class CustomizedDagsterDbtTranslator(DagsterDbtTranslator):
     def get_asset_key(self, dbt_resource_props):
 

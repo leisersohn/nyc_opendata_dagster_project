@@ -21,11 +21,13 @@ with staging as (
     select * from {{ ref('stg_nypd_arrest') }}
 ),
 
--- Join with dimension tables to get current descriptions
+-- Join with dimension tables to get surrogate keys and current descriptions
 enriched as (
     select
         s.arrest_key,
         s.arrest_date,
+        pd.pd_sk,
+        ky.ky_sk,
         s.pd_id,
         s.ky_id,
         s.law_code,
@@ -45,6 +47,8 @@ enriched as (
         s._loaded_at,
         'dbt' as _loaded_by
     from staging s
+    left join {{ ref('dwh_dim_pd_current') }} pd on s.pd_id = pd.pd_id
+    left join {{ ref('dwh_dim_ky_current') }} ky on s.ky_id = ky.ky_id
 )
 
 select * from enriched 

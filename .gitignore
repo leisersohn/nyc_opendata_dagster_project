@@ -41,6 +41,7 @@ logs/
 target/
 dbt_packages/
 package-lock.yml
+package-lock.concurrent-update-lock
 
 # IDE and editor files
 .vscode/
