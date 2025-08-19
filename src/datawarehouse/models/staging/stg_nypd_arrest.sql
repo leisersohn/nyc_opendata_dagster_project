@@ -1,12 +1,25 @@
 {{
   config(
-    materialized='table',
-    pre_hook="{% if adapter.get_relation(this.database, this.schema, this.name) %}truncate table {{ this }}{% endif %}"
+    materialized='incremental',
+    partition_by={
+        "field": "arrest_date",
+        "data_type": "date",
+        "granularity": "day"
+    },
+    pre_hook="""
+        {% if execute %}
+            {% if adapter.get_relation(this.database, this.schema, this.name) %}
+                truncate table {{ this }}
+            {% endif %}
+        {% endif %}
+    """
   )
 }}
 
 with source as (
-    select * from {{ source('raw', 'nypd_arrest_json') }}
+    select *
+    from {{ source('raw', 'nypd_arrest_json') }}
+    where arrest_date = '{{ var("partition_date") }}'
 ),
 
 cleaned as (
