@@ -7,7 +7,7 @@ from nyc_opendata_dagster_project.partitions import daily_partition
 
 # Define selectors for different types of models
 STAGING_SELECTOR = "fqn:staging"
-INCREMENTAL_SELECTOR = "fqn:staging.stg_nyc311 fqn:dwh.dwh_nypd_arrest fqn:staging.stg_nypd_arrest"  # Only specific incremental models that need partitions
+INCREMENTAL_SELECTOR = "fqn:dwh.dwh_nypd_arrest fqn:staging.stg_nypd_arrest"  # Only specific incremental models that need partitions
 DIMENSION_SELECTOR = "fqn:dwh.dwh_dim_pd fqn:dwh.dwh_dim_ky"  # Only specific dimension tables
 STG_NYC311_SELECTOR = "fqn:staging.stg_nyc311"
 SNAPSHOT_SELECTOR = "resource_type:snapshot"
@@ -42,36 +42,20 @@ def dbt_analytics(context: dg.AssetExecutionContext, dbt: DbtCliResource):
     dagster_dbt_translator=CustomizedDagsterDbtTranslator(),
     select=INCREMENTAL_SELECTOR,
     partitions_def=daily_partition,
+    backfill_policy=dg.BackfillPolicy.multi_run(max_partitions_per_run=1),
 )
 def incremental_dbt_models(context: dg.AssetExecutionContext, dbt: DbtCliResource):
-    # Handle both single partitions and partition ranges
-    if context.has_partition_key:
-        # Single partition run
-        partition_date = context.partition_key
-        print(f"Processing single partition: {partition_date}")
-        dbt_vars = {
-            "partition_date": partition_date
-        }
-        
-        yield from dbt.cli(
-            ["build", "--vars", json.dumps(dbt_vars)], 
-            context=context
-        ).stream()
-    else:
-        # Multiple partitions run - process each individually
-        partition_range = context.partition_key_range
-        print(f"Processing partition range: {partition_range.start} to {partition_range.end}")
-        
-        for partition_date in partition_range:
-            print(f"Processing partition: {partition_date}")
-            dbt_vars = {
-                "partition_date": partition_date
-            }
-            
-            yield from dbt.cli(
-                ["build", "--vars", json.dumps(dbt_vars)], 
-                context=context
-            ).stream()
+    """Run dbt build for exactly one partition per Dagster run."""
+    partition_date = context.partition_key
+    print(f"Processing single partition: {partition_date}")
+    dbt_vars = {
+        "partition_date": partition_date
+    }
+    
+    yield from dbt.cli(
+        ["build", "--vars", json.dumps(dbt_vars)], 
+        context=context
+    ).stream()
 
 @dbt_assets(
     manifest=dbt_project.manifest_path,
