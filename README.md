@@ -112,7 +112,12 @@ After installation, you need to initialize all assets and tables. This is a one-
 First, create the raw data tables by running Dagster assets for an initial partition:
 
 ```bash
-# From the project root directory
+# From the project root directory 
+
+# Initalize Dagster UI (this will parse DBT and generate the manifest file)
+dagster dev -h 0.0.0.0 -p 3000
+
+# Run Dagster asset from UI or command below
 dagster asset materialize -f nyc_opendata_dagster_project/definitions.py --select "nyc311_raw_data,nypd_arrest_raw_data" --partition 2025-06-01
 ```
 
