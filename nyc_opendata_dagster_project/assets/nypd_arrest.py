@@ -9,6 +9,7 @@ from datetime import datetime
     partitions_def=daily_partition,
     group_name="raw_data",
     description="Downloads NYPD Arrest data and stores in DuckDB",
+    backfill_policy=dg.BackfillPolicy.multi_run(max_partitions_per_run=1),
 )
 def nypd_arrest_raw_data(context: dg.AssetExecutionContext, database: DuckDBResource) -> dg.MaterializeResult:
     """
@@ -70,16 +71,25 @@ def nypd_arrest_raw_data(context: dg.AssetExecutionContext, database: DuckDBReso
         df = pd.DataFrame(data)
         df['partition_date'] = partition_date_str
         
-        # Drop existing table and recreate with correct schema
-        conn.execute("DROP TABLE IF EXISTS nypd_arrest_json")
+        # Check if table exists
+        try:
+            conn.execute("SELECT 1 FROM nypd_arrest_json LIMIT 1")
+            table_exists = True
+        except:
+            table_exists = False
         
-        # Create table with the actual columns from the JSON
-        conn.execute("CREATE TABLE nypd_arrest_json AS SELECT * FROM df LIMIT 0")
+        if not table_exists:
+            # Table doesn't exist - create it
+            conn.execute("CREATE TABLE nypd_arrest_json AS SELECT * FROM df LIMIT 0")
+            context.log.info(f"Created new nypd_arrest_json table for partition {partition_date_str}")
+        else:
+            # Table exists - just delete existing data for this partition
+            conn.execute("DELETE FROM nypd_arrest_json WHERE partition_date = ?", [partition_date_str])
+            context.log.info(f"Deleted existing nypd_arrest_json table for partition {partition_date_str}")
         
-        # Insert all data
+        # Insert new data for this partition
         conn.execute("INSERT INTO nypd_arrest_json SELECT * FROM df")
-    
-    context.log.info(f"Successfully stored NYPD arrest data in DuckDB for partition {partition_date_str}")
+        context.log.info(f"Successfully stored NYPD arrest data in DuckDB for partition {partition_date_str}")
     
     return dg.MaterializeResult(
         metadata={
