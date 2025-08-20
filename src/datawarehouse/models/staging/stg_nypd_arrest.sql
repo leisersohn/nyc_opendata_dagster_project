@@ -19,7 +19,8 @@
 with source as (
     select *
     from {{ source('raw', 'nypd_arrest_json') }}
-    where arrest_date = '{{ var("partition_date") }}'
+    where CAST(arrest_date AS DATE) >= DATE('{{ var("partition_date") }}')
+      and CAST(arrest_date AS DATE) <  DATE('{{ var("partition_date") }}') + INTERVAL '1 day'
 ),
 
 cleaned as (
