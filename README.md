@@ -133,6 +133,9 @@ Next, create all the DBT models and tables with full-refresh:
 # Navigate to the DBT project directory
 cd src/datawarehouse
 
+# Create snapshots
+dbt snapshot --vars '{"partition_date": "2025-06-01"}'
+
 # Run all DBT models with full-refresh for the initial partition
 dbt run --full-refresh --vars '{"partition_date": "2025-06-01"}'
 ```
