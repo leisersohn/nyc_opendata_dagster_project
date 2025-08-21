@@ -1,8 +1,15 @@
 FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential git \
+    build-essential git wget unzip \
  && rm -rf /var/lib/apt/lists/*
+
+# Install DuckDB CLI
+RUN wget https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip \
+ && unzip duckdb_cli-linux-amd64.zip \
+ && mv duckdb /usr/local/bin/ \
+ && chmod +x /usr/local/bin/duckdb \
+ && rm duckdb_cli-linux-amd64.zip
 
 ENV PYTHONUNBUFFERED=1 \
     DAGSTER_HOME=/opt/dagster \
