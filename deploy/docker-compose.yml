@@ -21,6 +21,8 @@ services:
       - ./dagster_home:/opt/dagster
       # Workspace config
       - ./workspace.yaml:/opt/dagster/workspace.yaml:ro
+      # Dagster configuration
+      - ../dagster.yaml:/opt/dagster/dagster.yaml:ro
       # Persist your project's data so the DuckDB file survives rebuilds
       - ../data:/app/src/datawarehouse/data
       # If you use host ~/.dbt for profiles, uncomment the next line AND set DBT_PROFILES_DIR=/root/.dbt
@@ -43,6 +45,7 @@ services:
     volumes:
       - ./dagster_home:/opt/dagster
       - ./workspace.yaml:/opt/dagster/workspace.yaml:ro
+      - ../dagster.yaml:/opt/dagster/dagster.yaml:ro
       - ../data:/app/src/datawarehouse/data
       # - /home/ec2-user/.dbt:/root/.dbt:ro  # match if used above
     restart: unless-stopped

@@ -12,3 +12,10 @@ nypd_arrest_job = dg.define_asset_job(
     partitions_def=daily_partition,
     selection=dg.AssetSelection.assets(["nypd_arrest_raw_data"])
 )
+
+nypd_per_partition_job = dg.define_asset_job(
+    name="nypd_per_partition_job",
+    partitions_def=daily_partition,
+    selection=dg.AssetSelection.keys("dwh_nypd_arrest").upstream(),
+    tags={"flow": "nypd_arrest"},
+)
