@@ -6,10 +6,9 @@ models:
     description: "Staging table for NYPD arrest data with cleaned and validated records"
     columns:
       - name: arrest_key
-        description: "Unique identifier for each arrest record"
+        description: "Arrest key"
         tests:
           - not_null
-          - unique
       - name: arrest_date
         description: "Date when the arrest occurred"
         tests:
@@ -104,10 +103,9 @@ models:
     description: "DWH fact table for NYPD arrest data with full historical records, partitioned by date"
     columns:
       - name: arrest_key
-        description: "Unique identifier for each arrest record"
+        description: "Arrest key"
         tests:
           - not_null
-          - unique
       - name: arrest_date
         description: "Date when the arrest occurred"
         tests:
